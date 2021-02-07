@@ -180,7 +180,16 @@ class FunctionBase:
 
         """
         # TODO: Implement for Task 1.3.
-        raise NotImplementedError('Need to implement for Task 1.3')
+        derivatives = cls.backward(ctx, d_output)
+        if isinstance(derivatives, (Variable,float,int)):
+            # inputs = [inputs]
+            derivatives = [derivatives]
+        ls = []
+        for inp,deriv in zip(inputs, derivatives):
+            if not is_constant(inp):
+                ls.append(VariableWithDeriv(inp, deriv))
+        return ls
+
 
 
 def is_leaf(val):
@@ -203,4 +212,19 @@ def backpropagate(final_variable_with_deriv):
            and its derivative that we want to propagate backward to the leaves.
     """
     # TODO: Implement for Task 1.4.
-    raise NotImplementedError('Need to implement for Task 1.4')
+    ls = [final_variable_with_deriv]
+    while ls:
+        var_with_deriv = ls.pop(0)
+        var, deriv = var_with_deriv.variable, var_with_deriv.deriv
+        if is_leaf(var):
+            var._add_deriv(deriv)
+        else:
+            his = var.history
+            last_fn, ctx, inps = his.last_fn, his.ctx, his.inputs
+            var_with_derivs = last_fn.chain_rule(ctx, inps, deriv)
+            for i in ls:
+                for j in var_with_derivs:
+                    if i.variable.name == j.variable.name: 
+                        i.deriv += j.deriv
+                        var_with_derivs.remove(j)
+            ls.extend(var_with_derivs)
